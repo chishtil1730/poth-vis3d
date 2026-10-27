@@ -1,6 +1,6 @@
 # poth-vis3d
 
-A computer-vision pipeline for pothole detection, relative-depression estimation, scene tracking, and monocular camera-trajectory reconstruction from road video.
+A computer-vision pipeline for pothole detection, relative-depression estimation, scene tracking, and monocular camera-trajectory reconstruction from road video or live cam feed.
 
 ## Project overview
 
