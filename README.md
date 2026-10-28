@@ -16,7 +16,7 @@ A computer-vision pipeline for pothole detection, relative-depression estimation
 
 ## Setup
 
-Run commands from the repository root. The examples below use the Windows path from the development environment; change it if your clone is elsewhere.
+Run commands from the repository root. The examples below use the Windows path from the development environment; change it if your clone cd into that folder
 
 ```powershell
 cd C:\Users\LENOVO\Dsa\Potholes
