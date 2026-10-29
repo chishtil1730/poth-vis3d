@@ -14,7 +14,7 @@ A computer-vision pipeline for pothole detection, relative-depression estimation
 
 > **Note:** The depression output represents relative values, not calibrated metric depth. Monocular reconstruction also has arbitrary scale unless additional calibration or scale information is provided.
 
-## Setup
+## Setting Up
 
 Run commands from the repository root. The examples below use the Windows path from the development environment; change it if your clone cd into that folder
 
