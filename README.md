@@ -103,7 +103,7 @@ Resume training from a checkpoint:
 python train.py --config config.yaml --resume outputs/run1/last.pt
 ```
 
-The configuration and checkpoint paths must match the files actually present in your checkout.
+The configuration & checkpoint paths must match the files actually present in your checkout.
 
 ### 6. Run geometry inference
 
