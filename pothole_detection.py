@@ -1,3 +1,4 @@
+
 import cv2
 import json
 import torch
@@ -5,41 +6,65 @@ import numpy as np
 
 from pathlib import Path
 from ultralytics import YOLO
-from huggingface_hub import hf_hub_download
 
-INPUT_DIR = Path("output/frames")
-OUTPUT_DIR = Path("output/pothole_results")
+
+# --------------------------------------------------
+# PROJECT PATHS
+# --------------------------------------------------
+
+PROJECT_DIR = Path(__file__).resolve().parent
+
+MODEL_PATH = PROJECT_DIR / "models" / "best.pt"
+
+INPUT_DIR = PROJECT_DIR / "output" / "frames"
+OUTPUT_DIR = PROJECT_DIR / "output" / "pothole_results"
+
 ANNOTATED_DIR = OUTPUT_DIR / "annotated"
 MASKS_DIR = OUTPUT_DIR / "masks"
 
-IMAGE_SIZE = 512
+
+# --------------------------------------------------
+# DETECTION SETTINGS
+# --------------------------------------------------
+
+IMAGE_SIZE = 640
 CONFIDENCE = 0.25
 IOU_THRESHOLD = 0.45
 MAX_DETECTIONS = 30
 
-MODEL_REPO = "keremberke/yolov8n-pothole-segmentation"
 
+# --------------------------------------------------
+# LOAD FINE-TUNED YOLO MODEL
+# --------------------------------------------------
 
 def load_model():
-    weights_path = hf_hub_download(
-        repo_id=MODEL_REPO,
-        filename="best.pt"
-    )
 
-    model = YOLO(weights_path)
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"YOLO model not found: {MODEL_PATH}\n"
+            "Make sure best.pt is inside the models folder."
+        )
+
+    model = YOLO(str(MODEL_PATH))
 
     device = 0 if torch.cuda.is_available() else "cpu"
 
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
 
-    print(f"Model loaded: {MODEL_REPO}")
+    print("\nYOLO MODEL LOADED SUCCESSFULLY")
+    print(f"Model: {MODEL_PATH}")
     print(f"Device: {'CUDA GPU' if device == 0 else 'CPU'}")
 
     return model, device
 
 
+# --------------------------------------------------
+# DETECT POTHOLES IN AN IMAGE
+# --------------------------------------------------
+
 def detect_potholes(model, device, image_path):
+
     image = cv2.imread(str(image_path))
 
     if image is None:
@@ -60,7 +85,12 @@ def detect_potholes(model, device, image_path):
     return image, results[0]
 
 
+# --------------------------------------------------
+# PROCESS EXTRACTED VIDEO FRAMES
+# --------------------------------------------------
+
 def process_frames():
+
     if not INPUT_DIR.exists():
         raise FileNotFoundError(
             f"Input directory not found: {INPUT_DIR}"
@@ -75,7 +105,8 @@ def process_frames():
 
     image_paths = sorted(
         path for path in INPUT_DIR.iterdir()
-        if path.is_file() and path.suffix.lower() in image_extensions
+        if path.is_file()
+        and path.suffix.lower() in image_extensions
     )
 
     if not image_paths:
@@ -84,10 +115,16 @@ def process_frames():
         )
 
     model, device = load_model()
+
     all_detections = []
 
     for frame_index, image_path in enumerate(image_paths):
-        output = detect_potholes(model, device, image_path)
+
+        output = detect_potholes(
+            model,
+            device,
+            image_path
+        )
 
         if output is None:
             continue
@@ -97,7 +134,11 @@ def process_frames():
         annotated_image = result.plot()
 
         annotated_path = ANNOTATED_DIR / image_path.name
-        cv2.imwrite(str(annotated_path), annotated_image)
+
+        cv2.imwrite(
+            str(annotated_path),
+            annotated_image
+        )
 
         frame_data = {
             "frame": image_path.name,
@@ -108,7 +149,8 @@ def process_frames():
             "detections": []
         }
 
-        if result.boxes is not None:
+        if result.boxes is not None and len(result.boxes):
+
             boxes = result.boxes.xyxy.cpu().numpy()
             confidences = result.boxes.conf.cpu().numpy()
             classes = result.boxes.cls.cpu().numpy().astype(int)
@@ -118,9 +160,12 @@ def process_frames():
             else:
                 masks = []
 
-            for detection_index, (box, confidence, class_id) in enumerate(
-                zip(boxes, confidences, classes)
-            ):
+            for detection_index, (
+                box,
+                confidence,
+                class_id
+            ) in enumerate(zip(boxes, confidences, classes)):
+
                 x1, y1, x2, y2 = box.tolist()
 
                 detection = {
@@ -138,6 +183,7 @@ def process_frames():
                 }
 
                 if detection_index < len(masks):
+
                     mask = masks[detection_index]
 
                     mask = cv2.resize(
@@ -159,7 +205,11 @@ def process_frames():
                     )
 
                     mask_path = MASKS_DIR / mask_name
-                    cv2.imwrite(str(mask_path), binary_mask)
+
+                    cv2.imwrite(
+                        str(mask_path),
+                        binary_mask
+                    )
 
                     detection["mask_file"] = str(mask_path)
 
@@ -177,6 +227,8 @@ def process_frames():
             f"{frame_data['pothole_count']} pothole(s)"
         )
 
+    # Save detection results as JSON.
+
     json_path = OUTPUT_DIR / "detections.json"
 
     with open(json_path, "w", encoding="utf-8") as file:
@@ -187,13 +239,17 @@ def process_frames():
         for frame in all_detections
     )
 
-    print("\nProcessing complete.")
+    print("\nPROCESSING COMPLETE")
     print(f"Frames processed: {len(all_detections)}")
     print(f"Total frame-level detections: {total_detections}")
     print(f"Annotated images: {ANNOTATED_DIR}")
     print(f"Pothole masks: {MASKS_DIR}")
     print(f"Detection data: {json_path}")
 
+
+# --------------------------------------------------
+# MAIN
+# --------------------------------------------------
 
 if __name__ == "__main__":
     process_frames()
